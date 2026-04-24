@@ -1,8 +1,8 @@
-export type ActivityAction = 
-  | 'create' 
-  | 'update' 
-  | 'delete' 
-  | 'move' 
+export type ActivityAction =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'move'
   | 'assign';
 
 export interface Activity {
@@ -12,7 +12,7 @@ export interface Activity {
   details: string;
   timestamp: Date;
   userId: string;
-  optimistic?: boolean; // For tracking optimistic updates
+  optimistic?: boolean;
 }
 
 export interface ActivityUpdate {
@@ -25,15 +25,21 @@ export interface ActivityUpdate {
 export interface RealtimeUpdate {
   id: string;
   taskId: string;
-  changes: Record<string, any>;
+  taskTitle: string;
+  changes: Record<string, unknown>;
   timestamp: Date;
   userId: string;
-  version: number; // For conflict resolution
+  version: number;
 }
 
 export interface ConflictResolution {
-  type: 'local' | 'remote' | 'merged';
-  resolvedAt: Date;
+  taskId: string;
+  taskTitle: string;
+  // 'pending' = awaiting user decision; 'local'/'remote' = resolved
+  type: 'local' | 'remote' | 'merged' | 'pending';
+  resolvedAt?: Date;
   localVersion: number;
   remoteVersion: number;
+  // The remote changes to apply if the user picks "Take Remote"
+  remoteChanges: Record<string, unknown>;
 }

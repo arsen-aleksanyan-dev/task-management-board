@@ -11,6 +11,8 @@ export interface Task {
   tags?: string[];
   createdDate: Date;
   updatedDate: Date;
+  // Monotonically increasing counter used for conflict detection
+  version: number;
 }
 
 export interface FilterOptions {
@@ -21,7 +23,9 @@ export interface FilterOptions {
 
 export interface TaskContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'createdDate' | 'updatedDate'>) => void;
+  // Set of task IDs whose API call is in-flight (optimistic update pending)
+  pendingTasks: Set<string>;
+  addTask: (task: Omit<Task, 'id' | 'createdDate' | 'updatedDate' | 'version'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
@@ -29,4 +33,5 @@ export interface TaskContextType {
   setFilters: (filters: FilterOptions) => void;
   filteredTasks: Task[];
   assignees: string[];
+  generateTasks: (count: number) => void;
 }

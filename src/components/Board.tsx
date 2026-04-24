@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { Zap } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Column } from './Column';
 import { FilterBar } from './FilterBar';
 import { TaskFormModal } from './TaskFormModal';
 import { ActivityFeed } from './ActivityFeed';
 import { RealtimeUpdatesPanel } from './RealtimeUpdatesPanel';
+import { ToastContainer } from './ToastContainer';
 import { TaskStatus } from '../types';
 
 const COLUMNS: { status: TaskStatus; title: string }[] = [
@@ -14,28 +16,26 @@ const COLUMNS: { status: TaskStatus; title: string }[] = [
 ];
 
 export const Board: React.FC = () => {
-  const { filteredTasks, moveTask } = useTaskContext();
+  const { filteredTasks, moveTask, generateTasks } = useTaskContext();
   const [showModal, setShowModal] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
-  // Group filtered tasks by status
+  // Group filtered tasks by status — recomputed only when filteredTasks changes
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, typeof filteredTasks> = {
       'todo': [],
       'in-progress': [],
       'done': [],
     };
-
-    filteredTasks.forEach(task => {
-      grouped[task.status].push(task);
-    });
-
+    filteredTasks.forEach(task => grouped[task.status].push(task));
     return grouped;
   }, [filteredTasks]);
 
   const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
+    // Store taskId in dataTransfer for cross-window safety (good practice)
+    e.dataTransfer.setData('text/plain', taskId);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -45,8 +45,9 @@ export const Board: React.FC = () => {
 
   const handleDrop = useCallback((e: React.DragEvent, status: TaskStatus) => {
     e.preventDefault();
-    if (draggedTaskId) {
-      moveTask(draggedTaskId, status);
+    const taskId = draggedTaskId ?? e.dataTransfer.getData('text/plain');
+    if (taskId) {
+      moveTask(taskId, status);
       setDraggedTaskId(null);
     }
   }, [draggedTaskId, moveTask]);
@@ -56,12 +57,24 @@ export const Board: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6" onDragEnd={handleDragEnd}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Task Management Board</h1>
-          <p className="text-gray-600">Organize and track your tasks with ease</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Task Management Board</h1>
+            <p className="text-gray-600">Organize and track your tasks with ease</p>
+          </div>
+
+          {/* Performance demo button */}
+          <button
+            onClick={() => generateTasks(1000)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-sm font-medium transition-colors border border-purple-200"
+            title="Add 1000 tasks to demonstrate virtual scroll"
+          >
+            <Zap size={16} />
+            Generate 1000 Tasks
+          </button>
         </div>
 
         {/* Filter Bar */}
@@ -81,6 +94,7 @@ export const Board: React.FC = () => {
                 tasks={tasksByStatus[column.status]}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
+                onDragStart={handleDragStart}
               />
             ))}
           </div>
@@ -93,8 +107,10 @@ export const Board: React.FC = () => {
         </div>
       </div>
 
-      {/* Task Form Modal */}
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} />}
+
+      {/* Toast notifications — rendered above everything else */}
+      <ToastContainer />
     </div>
   );
 };

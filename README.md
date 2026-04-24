@@ -248,6 +248,24 @@ This prevents unnecessary re-renders and optimizes performance.
 - Clear filters button
 - Create task button
 
+### ActivityFeed Component (Part 2)
+**Activity timeline** - Real-time activity log display
+- Shows all task actions chronologically
+- Emoji-coded action types for visual quick scanning
+- Relative timestamps (e.g., "2m ago")
+- User attribution for each action
+- Optimistic update indicators
+- Auto-scrolling with max 50 activities
+
+### RealtimeUpdatesPanel Component (Part 2)
+**Real-time connection status and updates** - Manages multi-user simulation
+- Connection status toggle (Connect/Disconnect)
+- Live indicator with pulsing animation
+- Recent updates list showing latest changes from "other users"
+- Conflict resolution UI with local/remote preference buttons
+- Last sync timestamp
+- Status information and helper text
+
 ---
 
 ## 💡 Implementation Notes
@@ -271,11 +289,27 @@ The app comes with 4 sample tasks:
 4. **Add drag and drop** (Todo) - Charlie - High
 
 ### Performance Optimizations Already Implemented
-- ✅ `React.memo()` on TaskCard, Column, FilterBar
+- ✅ `React.memo()` on TaskCard, Column, FilterBar, ActivityFeed, RealtimeUpdatesPanel
 - ✅ `useMemo()` for filtered tasks and assignees list
 - ✅ `useCallback()` for event handlers and actions
 - ✅ No unnecessary re-renders
 - ✅ Efficient event delegation in drag-drop
+- ✅ Activity list capped at 50 items for memory efficiency
+- ✅ Realtime updates capped at 20 items
+- ✅ Interval-based updates instead of continuous polling
+
+### Real-time Update Architecture
+**Activity Context Patterns:**
+- Immutable state updates with proper object spreading
+- Reference stability with useCallback memoization
+- Proper cleanup with useEffect return for intervals
+- Optional context availability (TaskContext doesn't require ActivityContext)
+
+**Multi-user Simulation:**
+- Version tracking per task for conflict detection
+- Activity queue management (FIFO with size limits)
+- Realistic traffic simulation (30% probability)
+- Random user selection from predefined team
 
 ### Browser Compatibility
 - Modern browsers with HTML5 Drag-and-Drop API
@@ -284,21 +318,17 @@ The app comes with 4 sample tasks:
 
 ---
 
-## 🔮 Future Enhancements (Prepared Structure)
+## 🔮 Future Enhancements
 
-### Part 2: Real-time Updates
-- Simulate real-time task updates from server
-- Show activity feed/timeline
-- Implement conflict resolution
-- Optimistic updates with rollback
-
-### Part 3: Advanced Features
-- Virtual scrolling for 1000+ tasks
+### Part 3: Advanced Performance Optimizations (Prepared Structure)
+- Virtual scrolling for 1000+ tasks (react-window)
 - Advanced analytics dashboard
 - Task dependencies and subtasks
 - Recurring tasks
 - Calendar view integration
 - Notifications system
+- WebSocket integration for real production use
+- Server-side persistence layer
 
 ---
 

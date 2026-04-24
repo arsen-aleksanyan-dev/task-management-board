@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { TaskPriority } from '../types';
 
