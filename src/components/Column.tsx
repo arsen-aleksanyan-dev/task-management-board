@@ -7,6 +7,7 @@ interface ColumnProps {
   status: TaskStatus;
   title: string;
   tasks: Task[];
+  draggedTaskId: string | null;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, status: TaskStatus) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
@@ -54,7 +55,7 @@ const CARD_HEIGHT = 176;
  * re-rendering all 1000+.
  */
 export const Column: React.FC<ColumnProps> = memo(
-  ({ status, title, tasks, onDragOver, onDrop, onDragStart, onEdit }) => {
+  ({ status, title, tasks, draggedTaskId, onDragOver, onDrop, onDragStart, onEdit }) => {
     const shouldVirtualize = tasks.length >= VIRTUALIZE_AT;
 
     const { virtualItems, totalHeight, scrollContainerRef } = useVirtualList({
@@ -113,14 +114,14 @@ export const Column: React.FC<ColumnProps> = memo(
                       padding: '0 0 8px',
                     }}
                   >
-                    <TaskCard task={tasks[index]} onDragStart={onDragStart} onEdit={onEdit} />
+                    <TaskCard task={tasks[index]} isDragging={draggedTaskId === tasks[index].id} onDragStart={onDragStart} onEdit={onEdit} />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {tasks.map(task => (
-                  <TaskCard key={task.id} task={task} onDragStart={onDragStart} onEdit={onEdit} />
+                  <TaskCard key={task.id} task={task} isDragging={draggedTaskId === task.id} onDragStart={onDragStart} onEdit={onEdit} />
                 ))}
               </div>
             )}

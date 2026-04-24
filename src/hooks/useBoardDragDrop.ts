@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { TaskStatus } from '../types';
 
 interface UseBoardDragDropOptions {
@@ -13,43 +13,61 @@ interface UseBoardDragDropResult {
   handleDragEnd: () => void;
 }
 
-/**
- * Custom hook that encapsulates all HTML5 drag-and-drop state for the Kanban
- * board. Extracted from Board so the component only manages layout concerns.
- *
- * Design notes:
- * - `draggedTaskId` is stored as state rather than a ref so that the dragging
- *   visual (opacity on the source card) re-renders correctly.
- * - The taskId is also written to `dataTransfer` as a fallback for drops that
- *   arrive from a different frame or after a fast pointer release before the
- *   React state settles.
- * - All callbacks are stable (useCallback) so Column and TaskCard memoization
- *   is not broken by Board re-renders.
- */
 export function useBoardDragDrop({ onMove }: UseBoardDragDropOptions): UseBoardDragDropResult {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  // Ref mirrors the state value so handleDrop can read it without being in deps.
+  // Without this, updating draggedTaskId causes handleDrop to get a new reference,
+  // which in turn causes Column (memo'd) to re-render mid-drag — producing the
+  // "two cards" visual glitch.
+  const draggedTaskIdRef = useRef<string | null>(null);
 
   const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
+    draggedTaskIdRef.current = taskId;
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', taskId);
+
+    // Build a styled drag ghost from the card element itself.
+    const card = (e.currentTarget as HTMLElement);
+    const clone = card.cloneNode(true) as HTMLElement;
+    clone.style.cssText = `
+      position: fixed;
+      top: -9999px;
+      left: -9999px;
+      width: ${card.offsetWidth}px;
+      pointer-events: none;
+      opacity: 0.95;
+      transform: rotate(2deg);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    `;
+    document.body.appendChild(clone);
+    e.dataTransfer.setDragImage(clone, card.offsetWidth / 2, 20);
+    // Remove the clone after the browser has captured it for the drag image
+    requestAnimationFrame(() => document.body.removeChild(clone));
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, status: TaskStatus) => {
     e.preventDefault();
-    const taskId = draggedTaskId ?? e.dataTransfer.getData('text/plain');
+    e.stopPropagation();
+    // Use the ref so this callback never needs draggedTaskId in its deps.
+    const taskId = draggedTaskIdRef.current ?? e.dataTransfer.getData('text/plain');
     if (taskId) {
       onMove(taskId, status);
+      draggedTaskIdRef.current = null;
       setDraggedTaskId(null);
     }
-  }, [draggedTaskId, onMove]);
+  }, [onMove]);
 
-  const handleDragEnd = useCallback(() => setDraggedTaskId(null), []);
+  const handleDragEnd = useCallback(() => {
+    draggedTaskIdRef.current = null;
+    setDraggedTaskId(null);
+  }, []);
 
   return { draggedTaskId, handleDragStart, handleDragOver, handleDrop, handleDragEnd };
 }

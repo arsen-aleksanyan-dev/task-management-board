@@ -37,8 +37,8 @@ export const TaskCard: React.FC<TaskCardProps> = memo(({ task, isDragging, onDra
     <div
       role="listitem"
       aria-label={`${task.title}, ${task.priority} priority, assigned to ${task.assignee}${isPending ? ', saving' : ''}`}
-      className={`relative bg-white p-4 rounded-lg border-l-4 border-blue-500 shadow-md hover:shadow-lg cursor-grab active:cursor-grabbing transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
-        isDragging ? 'opacity-50' : ''
+      className={`relative select-none bg-white p-4 rounded-lg border-l-4 border-blue-500 shadow-md hover:shadow-lg cursor-grab active:cursor-grabbing transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
+        isDragging ? 'opacity-30 scale-95 ring-2 ring-blue-300' : ''
       } ${isPending ? 'opacity-60' : ''}`}
       draggable={!isPending}
       onDragStart={(e) => onDragStart(e, task.id)}

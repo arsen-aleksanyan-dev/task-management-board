@@ -24,6 +24,7 @@ export const Board: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const {
+    draggedTaskId,
     handleDragStart,
     handleDragOver,
     handleDrop,
@@ -136,6 +137,7 @@ export const Board: React.FC = () => {
                     status={column.status}
                     title={column.title}
                     tasks={tasksByStatus[column.status]}
+                    draggedTaskId={draggedTaskId}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onDragStart={handleDragStart}
