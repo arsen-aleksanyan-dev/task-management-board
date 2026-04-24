@@ -10,6 +10,7 @@ interface ColumnProps {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, status: TaskStatus) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
+  onEdit: (task: Task) => void;
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -53,7 +54,7 @@ const CARD_HEIGHT = 176;
  * re-rendering all 1000+.
  */
 export const Column: React.FC<ColumnProps> = memo(
-  ({ status, title, tasks, onDragOver, onDrop, onDragStart }) => {
+  ({ status, title, tasks, onDragOver, onDrop, onDragStart, onEdit }) => {
     const shouldVirtualize = tasks.length >= VIRTUALIZE_AT;
 
     const { virtualItems, totalHeight, scrollContainerRef } = useVirtualList({
@@ -110,14 +111,14 @@ export const Column: React.FC<ColumnProps> = memo(
                       padding: '0 0 8px',
                     }}
                   >
-                    <TaskCard task={tasks[index]} onDragStart={onDragStart} />
+                    <TaskCard task={tasks[index]} onDragStart={onDragStart} onEdit={onEdit} />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {tasks.map(task => (
-                  <TaskCard key={task.id} task={task} onDragStart={onDragStart} />
+                  <TaskCard key={task.id} task={task} onDragStart={onDragStart} onEdit={onEdit} />
                 ))}
               </div>
             )}

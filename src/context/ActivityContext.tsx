@@ -23,7 +23,7 @@ const SIMULATED_USERS = ['Diana', 'Eve', 'Frank', 'Grace'];
 const REMOTE_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'done'];
 
 export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { tasks, updateTask, pendingTasks } = useTaskContext();
+  const { tasks, applyExternalUpdate, updateTask, pendingTasks } = useTaskContext();
   const { addToast } = useToastContext();
 
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -108,8 +108,8 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setConflicts(prev => [conflict, ...prev].slice(0, 5));
       addToast(`Conflict: ${randomUser} also moved "${targetTask.title}"`, 'warning');
     } else {
-      // No conflict — apply remote change and notify
-      updateTask(targetTask.id, remoteChanges as Partial<typeof targetTask>);
+      // No conflict — apply remote change without polluting undo history
+      applyExternalUpdate(targetTask.id, remoteChanges as Partial<typeof targetTask>);
 
       setRealtimeUpdates(prev => [
         {

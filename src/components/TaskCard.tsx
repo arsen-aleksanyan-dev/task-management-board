@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Calendar, Trash2, Loader2 } from 'lucide-react';
+import { Calendar, Trash2, Loader2, Pencil } from 'lucide-react';
 import { Task, TaskPriority } from '../types';
 import { useTaskContext } from '../context/TaskContext';
 
@@ -7,6 +7,7 @@ interface TaskCardProps {
   task: Task;
   isDragging?: boolean;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
+  onEdit: (task: Task) => void;
 }
 
 const priorityConfig: Record<TaskPriority, { color: string; bgColor: string }> = {
@@ -17,15 +18,16 @@ const priorityConfig: Record<TaskPriority, { color: string; bgColor: string }> =
 
 /**
  * Re-render optimizations:
- * - Wrapped in React.memo so the card only re-renders when its own `task`
- *   prop or `isPending` changes. All stable callbacks (onDragStart, deleteTask)
- *   are defined with useCallback in their sources.
- * - `pendingTasks` is read directly from context. Because Set identity changes
- *   on every add/remove, all cards re-render on any pending change. For boards
- *   with hundreds of visible cards this is acceptable; for 1000+ cards the
- *   virtual list ensures most cards are unmounted so the overhead is negligible.
+ * - React.memo compares task (by reference) and onDragStart/onEdit (stable
+ *   useCallback refs from Board). The card only re-renders when its own data
+ *   changes or it transitions in/out of a pending state.
+ * - isPending is read from context. Because pendingTasks is a Set that gets a
+ *   new reference on every add/remove, all mounted TaskCards re-render when
+ *   any task becomes pending. In practice, at most one or two tasks are pending
+ *   simultaneously, so the visible diff is tiny. For the virtual-scroll path,
+ *   off-screen cards are unmounted entirely, making this a non-issue at scale.
  */
-export const TaskCard: React.FC<TaskCardProps> = memo(({ task, isDragging, onDragStart }) => {
+export const TaskCard: React.FC<TaskCardProps> = memo(({ task, isDragging, onDragStart, onEdit }) => {
   const { deleteTask, pendingTasks } = useTaskContext();
   const isPending = pendingTasks.has(task.id);
   const { color, bgColor } = priorityConfig[task.priority];
@@ -39,7 +41,7 @@ export const TaskCard: React.FC<TaskCardProps> = memo(({ task, isDragging, onDra
       draggable={!isPending}
       onDragStart={(e) => onDragStart(e, task.id)}
     >
-      {/* Loading overlay while API call is in-flight */}
+      {/* Loading overlay shown while the API call is in-flight */}
       {isPending && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg z-10">
           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-blue-100">
@@ -51,14 +53,24 @@ export const TaskCard: React.FC<TaskCardProps> = memo(({ task, isDragging, onDra
 
       <div className="flex justify-between items-start gap-2 mb-2">
         <h3 className="font-semibold text-gray-800 flex-1 line-clamp-2">{task.title}</h3>
-        <button
-          onClick={() => deleteTask(task.id)}
-          disabled={isPending}
-          className="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 flex-shrink-0 disabled:opacity-40"
-          title="Delete task"
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={() => onEdit(task)}
+            disabled={isPending}
+            className="p-1 hover:bg-blue-100 rounded text-blue-400 hover:text-blue-600 disabled:opacity-40"
+            title="Edit task"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={() => deleteTask(task.id)}
+            disabled={isPending}
+            className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 disabled:opacity-40"
+            title="Delete task"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
