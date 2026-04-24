@@ -2,10 +2,16 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useRe
 import { Task, TaskContextType, FilterOptions, TaskStatus, TaskPriority } from '../types';
 import { HistoryEntry, HistoryState } from '../types/history';
 import { useToastContext } from './ToastContext';
+import {
+  pushToHistory,
+  stepBackHistory,
+  stepForwardHistory,
+  applyUndo,
+  applyRedo,
+} from '../utils/historyUtils';
+import { filterTasks } from '../utils/filterUtils';
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
-
-const MAX_HISTORY = 50;
 
 const TITLES = [
   'Fix authentication bug', 'Implement search feature', 'Refactor database layer',
@@ -99,20 +105,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [tasks]
   );
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      if (filters.assignee && task.assignee !== filters.assignee) return false;
-      if (filters.priority?.length && !filters.priority.includes(task.priority)) return false;
-      if (filters.searchTerm) {
-        const term = filters.searchTerm.toLowerCase();
-        if (
-          !task.title.toLowerCase().includes(term) &&
-          !task.description.toLowerCase().includes(term)
-        ) return false;
-      }
-      return true;
-    });
-  }, [tasks, filters]);
+  const filteredTasks = useMemo(() => filterTasks(tasks, filters), [tasks, filters]);
 
   // ── History helpers ────────────────────────────────────────────────────────
 
@@ -134,15 +127,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date(),
     };
-
-    setHistoryState(prev => {
-      const base = prev.stack.slice(0, prev.index + 1); // drop redo branch
-      const updated = [...base, newEntry];
-      const trimmed = updated.length > MAX_HISTORY
-        ? updated.slice(updated.length - MAX_HISTORY)
-        : updated;
-      return { stack: trimmed, index: trimmed.length - 1 };
-    });
+    setHistoryState(prev => pushToHistory(prev, newEntry));
   }, []);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
@@ -319,35 +304,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (index < 0) return;
 
     const entry = stack[index];
+    const result = applyUndo(tasksRef.current, entry);
 
-    switch (entry.type) {
-      case 'add':
-        // Undo create → delete the task
-        setTasks(prev => prev.filter(t => t.id !== entry.taskId));
-        break;
-
-      case 'delete':
-        // Undo delete → restore the task (prepend so it's visible immediately)
-        if (entry.before) {
-          setTasks(prev => [entry.before!, ...prev.filter(t => t.id !== entry.taskId)]);
-        }
-        break;
-
-      case 'move':
-      case 'update':
-        // Undo move/update → revert to before-snapshot
-        if (entry.before) {
-          const exists = tasksRef.current.some(t => t.id === entry.taskId);
-          if (!exists) {
-            addToast(`Cannot undo: "${entry.taskTitle}" no longer exists`, 'error');
-            return;
-          }
-          setTasks(prev => prev.map(t => (t.id === entry.taskId ? entry.before! : t)));
-        }
-        break;
+    if (result === null) {
+      addToast(`Cannot undo: "${entry.taskTitle}" no longer exists`, 'error');
+      return;
     }
 
-    setHistoryState(prev => ({ ...prev, index: prev.index - 1 }));
+    setTasks(result);
+    setHistoryState(prev => stepBackHistory(prev));
     addToast(`Undid: ${entry.description}`, 'info');
   }, [addToast]);
 
@@ -364,35 +329,15 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (index >= stack.length - 1) return;
 
     const entry = stack[index + 1];
+    const result = applyRedo(tasksRef.current, entry);
 
-    switch (entry.type) {
-      case 'add':
-        // Redo create → re-insert the task
-        if (entry.after) {
-          setTasks(prev => [entry.after!, ...prev.filter(t => t.id !== entry.taskId)]);
-        }
-        break;
-
-      case 'delete':
-        // Redo delete → remove again
-        setTasks(prev => prev.filter(t => t.id !== entry.taskId));
-        break;
-
-      case 'move':
-      case 'update':
-        // Redo move/update → apply after-snapshot
-        if (entry.after) {
-          const exists = tasksRef.current.some(t => t.id === entry.taskId);
-          if (!exists) {
-            addToast(`Cannot redo: "${entry.taskTitle}" no longer exists`, 'error');
-            return;
-          }
-          setTasks(prev => prev.map(t => (t.id === entry.taskId ? entry.after! : t)));
-        }
-        break;
+    if (result === null) {
+      addToast(`Cannot redo: "${entry.taskTitle}" no longer exists`, 'error');
+      return;
     }
 
-    setHistoryState(prev => ({ ...prev, index: prev.index + 1 }));
+    setTasks(result);
+    setHistoryState(prev => stepForwardHistory(prev));
     addToast(`Redid: ${entry.description}`, 'info');
   }, [addToast]);
 

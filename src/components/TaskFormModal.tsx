@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, TaskPriority } from '../types';
@@ -12,6 +12,36 @@ interface TaskFormProps {
 export const TaskFormModal: React.FC<TaskFormProps> = ({ onClose, task }) => {
   const { addTask, updateTask, assignees } = useTaskContext();
   const isEditing = !!task;
+  const headingId = isEditing ? 'edit-task-dialog-title' : 'create-task-dialog-title';
+
+  // Close on Escape key — standard modal accessibility pattern
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  // Trap focus inside the modal while open
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll<HTMLElement>(FOCUSABLE);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', trap);
+    first?.focus();
+    return () => document.removeEventListener('keydown', trap);
+  }, []);
 
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
@@ -60,13 +90,23 @@ export const TaskFormModal: React.FC<TaskFormProps> = ({ onClose, task }) => {
     : assignees;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div ref={modalRef} className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">
+          <h2 id={headingId} className="text-2xl font-bold">
             {isEditing ? 'Edit Task' : 'Create New Task'}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded"
+            aria-label="Close dialog"
+          >
             <X size={20} />
           </button>
         </div>
@@ -82,7 +122,6 @@ export const TaskFormModal: React.FC<TaskFormProps> = ({ onClose, task }) => {
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Task title"
-              autoFocus
             />
           </div>
 

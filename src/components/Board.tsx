@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
+import { useBoardDragDrop } from '../hooks/useBoardDragDrop';
 import { Column } from './Column';
 import { FilterBar } from './FilterBar';
 import { TaskFormModal } from './TaskFormModal';
@@ -21,7 +22,13 @@ export const Board: React.FC = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+  } = useBoardDragDrop({ onMove: moveTask });
 
   // Group filtered tasks by status — recomputed only when filteredTasks changes
   const tasksByStatus = useMemo(() => {
@@ -74,85 +81,73 @@ export const Board: React.FC = () => {
     return () => document.removeEventListener('keydown', handler);
   }, [undo, redo]);
 
-  // ── Drag and drop ──────────────────────────────────────────────────────────
-
-  const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
-    setDraggedTaskId(taskId);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', taskId);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent, status: TaskStatus) => {
-    e.preventDefault();
-    const taskId = draggedTaskId ?? e.dataTransfer.getData('text/plain');
-    if (taskId) {
-      moveTask(taskId, status);
-      setDraggedTaskId(null);
-    }
-  }, [draggedTaskId, moveTask]);
-
-  const handleDragEnd = useCallback(() => setDraggedTaskId(null), []);
-
   const handleEdit = useCallback((task: Task) => setEditingTask(task), []);
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6"
+      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6"
       onDragEnd={handleDragEnd}
     >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-4 md:mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-1">Task Management Board</h1>
-            <p className="text-gray-600">Organize and track your tasks with ease</p>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-1">
+              Task Management Board
+            </h1>
+            <p className="text-sm text-gray-600">Organize and track your tasks with ease</p>
           </div>
 
           <button
             onClick={() => generateTasks(1000)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-sm font-medium transition-colors border border-purple-200"
+            className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-sm font-medium transition-colors border border-purple-200"
             title="Add 1000 tasks to demonstrate virtual scroll"
           >
-            <Zap size={16} />
-            Generate 1000 Tasks
+            <Zap size={15} />
+            <span className="hidden sm:inline">Generate</span> 1000 Tasks
           </button>
         </div>
 
         {/* Undo / Redo toolbar */}
-        <div className="mb-4">
+        <div className="mb-3">
           <UndoRedoBar />
         </div>
 
         {/* Filter Bar */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <FilterBar onCreateTask={() => setShowCreateModal(true)} />
         </div>
 
-        {/* Main Layout: Board + Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-          {/* Board Columns */}
-          <div className="lg:col-span-3 flex gap-6 h-[calc(100vh-390px)]">
-            {COLUMNS.map(column => (
-              <Column
-                key={column.status}
-                status={column.status}
-                title={column.title}
-                tasks={tasksByStatus[column.status]}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragStart={handleDragStart}
-                onEdit={handleEdit}
-              />
-            ))}
+        {/* Main Layout: Board + Sidebar
+            On mobile:  columns stack vertically, sidebar below
+            On desktop: 3 board columns + 1 sidebar in a grid row  */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+          {/* Board Columns — horizontal scroll on mobile, fixed-height row on desktop */}
+          <div className="lg:col-span-3">
+            <div className="
+              flex gap-4
+              overflow-x-auto pb-2
+              lg:overflow-x-visible lg:pb-0
+              lg:h-[calc(100vh-380px)]
+            ">
+              {COLUMNS.map(column => (
+                <div key={column.status} className="min-w-[280px] sm:min-w-[320px] lg:min-w-0 flex-1">
+                  <Column
+                    status={column.status}
+                    title={column.title}
+                    tasks={tasksByStatus[column.status]}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onDragStart={handleDragStart}
+                    onEdit={handleEdit}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-4 h-[calc(100vh-390px)] overflow-y-auto">
+          {/* Sidebar — full width on mobile, fixed-height scroll column on desktop */}
+          <div className="lg:col-span-1 space-y-4 lg:h-[calc(100vh-380px)] lg:overflow-y-auto">
             <ActivityFeed />
             <RealtimeUpdatesPanel />
           </div>

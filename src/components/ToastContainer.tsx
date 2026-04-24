@@ -31,7 +31,19 @@ export const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    /*
+     * aria-live="assertive" for errors (need immediate attention), "polite"
+     * for informational toasts. Because we mix types in one container we use
+     * role="log" which implies aria-live="polite" and lets the browser batch
+     * announcements rather than interrupting the user mid-sentence.
+     */
+    <div
+      role="log"
+      aria-label="Notifications"
+      aria-live="polite"
+      aria-atomic="false"
+      className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+    >
       {toasts.map(toast => {
         const style = toastStyles[toast.type];
         return (

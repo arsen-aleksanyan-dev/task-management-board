@@ -64,11 +64,11 @@ export const Column: React.FC<ColumnProps> = memo(
     });
 
     return (
-      <div className="flex-1 min-w-0">
+      <div className="h-full min-h-[400px]" role="region" aria-label={`${title} column`}>
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full flex flex-col">
           {/* Header */}
           <div className={`p-4 border-b-2 ${statusBorderColors[status]} rounded-t-lg`}>
-            <h2 className="font-bold text-gray-800">{title}</h2>
+            <h2 className="font-bold text-gray-800" aria-label={`${title}, ${tasks.length} tasks`}>{title}</h2>
             <p className="text-sm text-gray-500 mt-1">
               {tasks.length} tasks
               {shouldVirtualize && (
@@ -86,6 +86,8 @@ export const Column: React.FC<ColumnProps> = memo(
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
             data-status={status}
+            role="list"
+            aria-label={`${title} tasks`}
           >
             {tasks.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-gray-400">

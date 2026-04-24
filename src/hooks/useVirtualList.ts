@@ -1,35 +1,33 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { computeVirtualItems, computeTotalHeight } from '../utils/virtualListUtils';
 
 interface VirtualListOptions {
   itemCount: number;
   itemHeight: number;
-  // Number of items to render beyond the visible area for smooth scrolling
   overscan?: number;
 }
 
 export interface VirtualItem {
   index: number;
-  // Pixel offset from the top of the list
   start: number;
 }
 
 interface VirtualListResult {
   virtualItems: VirtualItem[];
-  // Total scrollable height; set as height of the inner container
   totalHeight: number;
-  // Attach to the scrollable container div
   scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 /**
- * Lightweight virtual list hook for rendering only visible items.
+ * Lightweight virtual list hook.
  *
- * Uses fixed item height for O(1) index calculation — no DOM measurement needed.
- * Overscan adds buffer items above/below viewport to prevent flicker during fast
- * scrolling. ResizeObserver keeps container height accurate on layout changes.
+ * Delegates the visible-window calculation to the pure `computeVirtualItems`
+ * utility (testable without a DOM) and only handles the React-specific
+ * concerns here: scroll events, container sizing via ResizeObserver.
  *
- * Re-render optimization: only the slice of virtualItems changes on scroll,
- * so memoized item components outside the visible window are never re-rendered.
+ * Re-render behavior: `virtualItems` changes on every scroll tick, but each
+ * array typically contains only ~10 items regardless of total itemCount, so
+ * diffing is O(visible items), not O(total items).
  */
 export function useVirtualList({
   itemCount,
@@ -53,7 +51,6 @@ export function useVirtualList({
     setContainerHeight(el.clientHeight);
     el.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Track container resize (e.g. window resize, sidebar collapse)
     const observer = new ResizeObserver(() => {
       setContainerHeight(el.clientHeight);
     });
@@ -65,20 +62,17 @@ export function useVirtualList({
     };
   }, [handleScroll]);
 
-  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
-  const endIndex = Math.min(
-    itemCount - 1,
-    Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
-  );
-
-  const virtualItems: VirtualItem[] = [];
-  for (let i = startIndex; i <= endIndex; i++) {
-    virtualItems.push({ index: i, start: i * itemHeight });
-  }
+  const virtualItems = computeVirtualItems({
+    itemCount,
+    itemHeight,
+    scrollTop,
+    containerHeight,
+    overscan,
+  });
 
   return {
     virtualItems,
-    totalHeight: itemCount * itemHeight,
+    totalHeight: computeTotalHeight(itemCount, itemHeight),
     scrollContainerRef,
   };
 }
