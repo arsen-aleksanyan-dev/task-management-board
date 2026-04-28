@@ -2,6 +2,8 @@
 
 A modern, performant task management application built with React, TypeScript, and Tailwind CSS. Features real-time state management, advanced filtering, drag-and-drop functionality, and comprehensive performance optimizations.
 
+**Live Demo:** [task-management-board-one.vercel.app](https://task-management-board-one.vercel.app/)
+
 ## 📋 Table of Contents
 
 - [Features](#features)

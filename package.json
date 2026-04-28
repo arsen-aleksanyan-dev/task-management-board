@@ -2,6 +2,7 @@
   "name": "task-management-board",
   "version": "1.0.0",
   "description": "A task management board with real-time updates, advanced filtering, and performance optimizations",
+  "homepage": "https://task-management-board-one.vercel.app/",
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
